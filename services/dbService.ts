@@ -80,6 +80,7 @@ export const dbService = {
 
   async sendMessage(msg: any) {
     checkConnection();
+    // Đảm bảo tên trường khớp với SQL
     return await supabase.from('messages').insert([msg]);
   },
 
