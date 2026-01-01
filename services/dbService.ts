@@ -12,43 +12,28 @@ export const dbService = {
   // USERS
   async getUser(phone: string) {
     if (!isSupabaseConfigured) return null;
-    // Đổi 'phoneNumber' thành 'phonenumber' (Postgres mặc định lowercase)
     const { data, error } = await supabase.from('users').select('*').eq('phonenumber', phone).single();
     if (error) return null;
-    
-    // Ánh xạ lại về camelCase cho Frontend
-    return {
-      ...data,
-      phoneNumber: data.phonenumber
-    } as User;
+    return { ...data, phoneNumber: data.phonenumber } as User;
+  },
+
+  async getAllUsers() {
+    if (!isSupabaseConfigured) return [];
+    const { data } = await supabase.from('users').select('*');
+    return (data || []).map(u => ({ ...u, phoneNumber: u.phonenumber })) as User[];
   },
 
   async createUser(user: User) {
     checkConnection();
-    // Chuyển đối tượng sang định dạng Database (snake_case/lowercase)
     const dbUser = {
       id: user.id,
-      name: user.name,
-      avatar: user.avatar,
-      phonenumber: user.phoneNumber, // Ánh xạ đúng cột
-      password: user.password,
-      status: user.status
-    };
-    const { data, error } = await supabase.from('users').insert([dbUser]).select().single();
-    return { data, error };
-  },
-
-  async updateUser(user: User) {
-    checkConnection();
-    const dbUser = {
       name: user.name,
       avatar: user.avatar,
       phonenumber: user.phoneNumber,
       password: user.password,
       status: user.status
     };
-    const { error } = await supabase.from('users').update(dbUser).eq('id', user.id);
-    return { error };
+    return await supabase.from('users').insert([dbUser]).select().single();
   },
 
   // CHATS & MESSAGES
@@ -60,7 +45,6 @@ export const dbService = {
       .contains('participants', [userId]);
     
     if (data) {
-      // Map lại dữ liệu tin nhắn từ lowercase DB sang camelCase Frontend
       const mappedData = data.map(chat => ({
         ...chat,
         messages: (chat.messages || []).map((m: any) => ({
@@ -70,28 +54,11 @@ export const dbService = {
           chatId: m.chatid,
           imageUrl: m.imageurl,
           stickerUrl: m.stickerurl
-        }))
+        })).sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       }));
       return { data: mappedData as Chat[], error };
     }
     return { data: [], error };
-  },
-
-  async sendMessage(chatId: string, message: Message) {
-    checkConnection();
-    const dbMessage = {
-      id: message.id,
-      chatid: chatId,
-      senderid: message.senderId,
-      sendername: message.senderName,
-      text: message.text,
-      imageurl: message.imageUrl,
-      stickerurl: message.stickerUrl,
-      status: message.status,
-      timestamp: message.timestamp
-    };
-    const { error } = await supabase.from('messages').insert([dbMessage]);
-    return { error };
   },
 
   // POSTS
@@ -109,7 +76,14 @@ export const dbService = {
         userName: post.username,
         userAvatar: post.useravatar,
         imageUrl: post.imageurl,
-        likedBy: post.likedby || []
+        likedBy: post.likedby || [],
+        comments: (post.comments || []).map((c: any) => ({
+          ...c,
+          userId: c.userid,
+          userName: c.username,
+          userAvatar: c.useravatar,
+          likedBy: c.likedby || []
+        }))
       }));
       return { data: mappedPosts as Post[], error };
     }
@@ -128,7 +102,61 @@ export const dbService = {
       likes: post.likes,
       likedby: post.likedBy
     };
-    const { error } = await supabase.from('posts').insert([dbPost]);
-    return { error };
+    return await supabase.from('posts').insert([dbPost]);
+  },
+
+  async updatePost(post: Post) {
+    checkConnection();
+    return await supabase.from('posts').update({
+      likes: post.likes,
+      likedby: post.likedBy
+    }).eq('id', post.id);
+  },
+
+  // FRIEND REQUESTS
+  async getRequests(userId: string) {
+    if (!isSupabaseConfigured) return { data: [], error: null };
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .or(`fromuserid.eq.${userId},touserid.eq.${userId}`);
+    
+    if (data) {
+      const mapped = data.map(r => ({
+        ...r,
+        fromUserId: r.fromuserid,
+        toUserId: r.touserid
+      }));
+      return { data: mapped as FriendRequest[], error };
+    }
+    return { data: [], error };
+  },
+
+  async createRequest(req: FriendRequest) {
+    checkConnection();
+    return await supabase.from('friend_requests').insert([{
+      id: req.id,
+      fromuserid: req.fromUserId,
+      touserid: req.toUserId,
+      status: req.status,
+      timestamp: req.timestamp
+    }]);
+  },
+
+  async updateRequest(requestId: string, status: string) {
+    checkConnection();
+    return await supabase.from('friend_requests').update({ status }).eq('id', requestId);
+  },
+
+  async createChat(chat: Chat) {
+    checkConnection();
+    return await supabase.from('chats').insert([{
+      id: chat.id,
+      type: chat.type,
+      participants: chat.participants,
+      name: chat.name,
+      avatar: chat.avatar,
+      lasttimestamp: chat.lastTimestamp
+    }]);
   }
 };
