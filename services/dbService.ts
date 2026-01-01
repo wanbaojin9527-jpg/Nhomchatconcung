@@ -12,20 +12,42 @@ export const dbService = {
   // USERS
   async getUser(phone: string) {
     if (!isSupabaseConfigured) return null;
-    const { data, error } = await supabase.from('users').select('*').eq('phoneNumber', phone).single();
+    // Đổi 'phoneNumber' thành 'phonenumber' (Postgres mặc định lowercase)
+    const { data, error } = await supabase.from('users').select('*').eq('phonenumber', phone).single();
     if (error) return null;
-    return data as User;
+    
+    // Ánh xạ lại về camelCase cho Frontend
+    return {
+      ...data,
+      phoneNumber: data.phonenumber
+    } as User;
   },
 
   async createUser(user: User) {
     checkConnection();
-    const { data, error } = await supabase.from('users').insert([user]).select().single();
+    // Chuyển đối tượng sang định dạng Database (snake_case/lowercase)
+    const dbUser = {
+      id: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      phonenumber: user.phoneNumber, // Ánh xạ đúng cột
+      password: user.password,
+      status: user.status
+    };
+    const { data, error } = await supabase.from('users').insert([dbUser]).select().single();
     return { data, error };
   },
 
   async updateUser(user: User) {
     checkConnection();
-    const { error } = await supabase.from('users').update(user).eq('id', user.id);
+    const dbUser = {
+      name: user.name,
+      avatar: user.avatar,
+      phonenumber: user.phoneNumber,
+      password: user.password,
+      status: user.status
+    };
+    const { error } = await supabase.from('users').update(dbUser).eq('id', user.id);
     return { error };
   },
 
@@ -36,12 +58,39 @@ export const dbService = {
       .from('chats')
       .select('*, messages(*)')
       .contains('participants', [userId]);
-    return { data: data as Chat[], error };
+    
+    if (data) {
+      // Map lại dữ liệu tin nhắn từ lowercase DB sang camelCase Frontend
+      const mappedData = data.map(chat => ({
+        ...chat,
+        messages: (chat.messages || []).map((m: any) => ({
+          ...m,
+          senderId: m.senderid,
+          senderName: m.sendername,
+          chatId: m.chatid,
+          imageUrl: m.imageurl,
+          stickerUrl: m.stickerurl
+        }))
+      }));
+      return { data: mappedData as Chat[], error };
+    }
+    return { data: [], error };
   },
 
   async sendMessage(chatId: string, message: Message) {
     checkConnection();
-    const { error } = await supabase.from('messages').insert([{ ...message, chatId }]);
+    const dbMessage = {
+      id: message.id,
+      chatid: chatId,
+      senderid: message.senderId,
+      sendername: message.senderName,
+      text: message.text,
+      imageurl: message.imageUrl,
+      stickerurl: message.stickerUrl,
+      status: message.status,
+      timestamp: message.timestamp
+    };
+    const { error } = await supabase.from('messages').insert([dbMessage]);
     return { error };
   },
 
@@ -52,22 +101,34 @@ export const dbService = {
       .from('posts')
       .select('*, comments(*)')
       .order('created_at', { ascending: false });
-    return { data: data as Post[], error };
+    
+    if (data) {
+      const mappedPosts = data.map(post => ({
+        ...post,
+        userId: post.userid,
+        userName: post.username,
+        userAvatar: post.useravatar,
+        imageUrl: post.imageurl,
+        likedBy: post.likedby || []
+      }));
+      return { data: mappedPosts as Post[], error };
+    }
+    return { data: [], error };
   },
 
   async createPost(post: Post) {
     checkConnection();
-    const { error } = await supabase.from('posts').insert([post]);
+    const dbPost = {
+      id: post.id,
+      userid: post.userId,
+      username: post.userName,
+      useravatar: post.userAvatar,
+      content: post.content,
+      imageurl: post.imageUrl,
+      likes: post.likes,
+      likedby: post.likedBy
+    };
+    const { error } = await supabase.from('posts').insert([dbPost]);
     return { error };
-  },
-
-  // FRIEND REQUESTS
-  async getRequests(userId: string) {
-    if (!isSupabaseConfigured) return { data: [], error: null };
-    const { data, error } = await supabase
-      .from('friend_requests')
-      .select('*')
-      .or(`fromUserId.eq.${userId},toUserId.eq.${userId}`);
-    return { data: data as FriendRequest[], error };
   }
 };

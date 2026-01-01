@@ -33,7 +33,22 @@ const ChatDetailScreen: React.FC<Props> = ({ user }) => {
           .eq('id', chatId)
           .single();
         if (error) throw error;
-        if (data) setChat(data);
+        
+        if (data) {
+          // Map tin nhắn từ DB (lowercase) sang Frontend (camelCase)
+          const mappedChat = {
+            ...data,
+            messages: (data.messages || []).map((m: any) => ({
+              ...m,
+              senderId: m.senderid,
+              senderName: m.sendername,
+              chatId: m.chatid,
+              imageUrl: m.imageurl,
+              stickerUrl: m.stickerurl
+            }))
+          };
+          setChat(mappedChat);
+        }
       } catch (err: any) {
         console.error("Fetch error:", err);
         setError("Không thể tải cuộc hội thoại.");
@@ -45,10 +60,24 @@ const ChatDetailScreen: React.FC<Props> = ({ user }) => {
     // Subscribe nhận tin nhắn mới ngay lập tức
     const channel = supabase
       .channel(`chat-${chatId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chatId=eq.${chatId}` }, (payload) => {
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages', 
+        filter: `chatid=eq.${chatId}` // Dùng chatid lowercase
+      }, (payload) => {
+        const m = payload.new as any;
+        const mappedMsg: Message = {
+          ...m,
+          senderId: m.senderid,
+          senderName: m.sendername,
+          chatId: m.chatid,
+          imageUrl: m.imageurl,
+          stickerUrl: m.stickerurl
+        };
         setChat(prev => {
           if (!prev) return prev;
-          return { ...prev, messages: [...prev.messages, payload.new as Message] };
+          return { ...prev, messages: [...prev.messages, mappedMsg] };
         });
       })
       .subscribe();
@@ -71,19 +100,22 @@ const ChatDetailScreen: React.FC<Props> = ({ user }) => {
     }
 
     setIsSyncing(true);
-    const newMessage: Message = {
+    
+    // Tạo object theo định dạng database
+    const dbMessage = {
       id: Date.now().toString(),
-      senderId: user.id,
-      senderName: user.name,
+      chatid: chatId,
+      senderid: user.id,
+      sendername: user.name,
       text: text,
       timestamp: new Date().toISOString(),
       status: 'sent',
-      imageUrl: options.image,
-      stickerUrl: options.sticker
+      imageurl: options.image || null,
+      stickerurl: options.sticker || null
     };
 
     try {
-      const { error } = await supabase.from('messages').insert([{ ...newMessage, chatId }]);
+      const { error } = await supabase.from('messages').insert([dbMessage]);
       if (error) throw error;
       setInputText('');
     } catch (err) {
