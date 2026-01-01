@@ -33,7 +33,7 @@ export const dbService = {
       password: user.password,
       status: user.status
     };
-    return await supabase.from('users').insert([dbUser]).select().single();
+    return await supabase.from('users').insert([dbUser]);
   },
 
   // CHATS & MESSAGES
@@ -47,18 +47,40 @@ export const dbService = {
     if (data) {
       const mappedData = data.map(chat => ({
         ...chat,
+        lastTimestamp: chat.lasttimestamp,
         messages: (chat.messages || []).map((m: any) => ({
           ...m,
           senderId: m.senderid,
           senderName: m.sendername,
           chatId: m.chatid,
           imageUrl: m.imageurl,
-          stickerUrl: m.stickerurl
+          stickerUrl: m.stickerurl,
+          audioUrl: m.audiourl,
+          fileUrl: m.fileurl,
+          fileName: m.filename
         })).sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       }));
       return { data: mappedData as Chat[], error };
     }
     return { data: [], error };
+  },
+
+  async createChat(chat: Chat) {
+    checkConnection();
+    const dbChat = {
+      id: chat.id,
+      type: chat.type,
+      participants: chat.participants,
+      name: chat.name,
+      avatar: chat.avatar,
+      lasttimestamp: chat.lastTimestamp || new Date().toISOString()
+    };
+    return await supabase.from('chats').insert([dbChat]);
+  },
+
+  async sendMessage(msg: any) {
+    checkConnection();
+    return await supabase.from('messages').insert([msg]);
   },
 
   // POSTS
@@ -146,17 +168,5 @@ export const dbService = {
   async updateRequest(requestId: string, status: string) {
     checkConnection();
     return await supabase.from('friend_requests').update({ status }).eq('id', requestId);
-  },
-
-  async createChat(chat: Chat) {
-    checkConnection();
-    return await supabase.from('chats').insert([{
-      id: chat.id,
-      type: chat.type,
-      participants: chat.participants,
-      name: chat.name,
-      avatar: chat.avatar,
-      lasttimestamp: chat.lastTimestamp
-    }]);
   }
 };

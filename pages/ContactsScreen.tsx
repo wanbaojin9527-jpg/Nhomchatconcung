@@ -66,8 +66,11 @@ const ContactsScreen: React.FC<Props> = ({ user }) => {
       timestamp: new Date().toISOString()
     };
     await dbService.createRequest(newRequest);
-    refreshData();
+    alert("Đã gửi lời mời kết bạn!");
+    setPhoneSearch('');
+    setSearchResult(null);
     setIsSearchingPhone(false);
+    refreshData();
   };
 
   const respondToRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
@@ -81,27 +84,36 @@ const ContactsScreen: React.FC<Props> = ({ user }) => {
           type: 'individual',
           participants: [user.id, reqItem.sender.id],
           messages: [],
-          lastTimestamp: new Date().toISOString()
+          lastTimestamp: new Date().toISOString(),
+          name: reqItem.sender.name,
+          avatar: reqItem.sender.avatar
         };
-        await dbService.createChat(newChat);
+        const { error } = await dbService.createChat(newChat);
+        if (error) console.error("Create chat error:", error);
       }
     }
     refreshData();
   };
 
-  const startChat = async (friendId: string) => {
+  const startChat = async (friend: User) => {
     const { data: allChats } = await dbService.getMyChats(user.id);
-    let existingChat = allChats?.find(c => c.type === 'individual' && c.participants.includes(friendId));
+    let existingChat = allChats?.find(c => c.type === 'individual' && c.participants.includes(friend.id));
     
     if (!existingChat) {
       const newChat: Chat = {
         id: 'chat-' + Date.now(),
         type: 'individual',
-        participants: [user.id, friendId],
+        participants: [user.id, friend.id],
         messages: [],
-        lastTimestamp: new Date().toISOString()
+        lastTimestamp: new Date().toISOString(),
+        name: friend.name,
+        avatar: friend.avatar
       };
-      await dbService.createChat(newChat);
+      const { error } = await dbService.createChat(newChat);
+      if (error) {
+        alert("Lỗi tạo cuộc hội thoại: " + error.message);
+        return;
+      }
       navigate(`/chat/${newChat.id}`);
     } else {
       navigate(`/chat/${existingChat.id}`);
@@ -133,7 +145,7 @@ const ContactsScreen: React.FC<Props> = ({ user }) => {
           <div className="p-4 bg-white border-b">
              <form onSubmit={handlePhoneSearch} className="flex gap-2">
                 <input placeholder="Số điện thoại..." className="flex-1 h-11 px-4 bg-slate-100 rounded-lg" value={phoneSearch} onChange={e => setPhoneSearch(e.target.value)} />
-                <button type="submit" className="px-6 bg-primary text-white rounded-lg">TÌM</button>
+                <button type="submit" className="px-6 bg-primary text-white rounded-lg font-bold">TÌM</button>
              </form>
              {searchResult && (
                <div className="mt-4 flex items-center gap-4 p-3 bg-blue-50 rounded-xl">
@@ -141,7 +153,7 @@ const ContactsScreen: React.FC<Props> = ({ user }) => {
                   <div className="flex-1">
                     <h4 className="font-bold">{searchResult.name}</h4>
                   </div>
-                  <button onClick={() => sendFriendRequest(searchResult.id)} className="bg-primary text-white px-4 py-1 rounded-full text-xs">KẾT BẠN</button>
+                  <button onClick={() => sendFriendRequest(searchResult.id)} className="bg-primary text-white px-4 py-1 rounded-full text-xs font-bold">KẾT BẠN</button>
                </div>
              )}
           </div>
@@ -153,7 +165,7 @@ const ContactsScreen: React.FC<Props> = ({ user }) => {
               <div key={f.id} className="flex items-center gap-4 px-4 py-3">
                 <img src={f.avatar} className="size-12 rounded-full" />
                 <h4 className="flex-1 font-medium">{f.name}</h4>
-                <button onClick={() => startChat(f.id)} className="p-2 text-slate-400"><span className="material-symbols-outlined">chat</span></button>
+                <button onClick={() => startChat(f)} className="p-2 text-primary active:scale-90"><span className="material-symbols-outlined filled">chat</span></button>
               </div>
             ))}
           </div>
