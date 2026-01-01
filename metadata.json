@@ -1,0 +1,10 @@
+
+{
+  "name": "Connect Plus",
+  "description": "A feature-rich social messaging platform with real-time chat, discovery feeds, and AI-powered smart replies.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
