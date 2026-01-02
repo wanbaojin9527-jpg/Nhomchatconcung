@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { MessageCircle, Users, LayoutGrid, Wallet, User, PlusCircle, LogOut } from 'lucide-react';
 
-// Pages (defined in same file for simplicity as per instructions, but logic-wise separate)
+// Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ChatListPage from './pages/ChatListPage';
@@ -13,13 +13,11 @@ import FeedPage from './pages/FeedPage';
 import WalletPage from './pages/WalletPage';
 import ProfilePage from './pages/ProfilePage';
 
-// Mock Auth Context (In a real app, use Supabase Auth)
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check local storage for session (Mocking Supabase session)
     const session = localStorage.getItem('concung_session');
     if (session) {
       setUser(JSON.parse(session));
@@ -37,7 +35,7 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-pink-400">Đang tải...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center text-pink-400 font-bold">🍼 Đang vào ConCung...</div>;
 
   return (
     <HashRouter>
@@ -66,25 +64,27 @@ const BottomNav: React.FC = () => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
 
+  const getIconColor = (path: string) => isActive(path) ? 'text-pink-500' : 'text-gray-400';
+
   return (
     <nav className="fixed bottom-0 max-w-md w-full bg-white border-t border-pink-100 px-6 py-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] rounded-t-3xl z-50">
-      <Link to="/" className={`flex flex-col items-center gap-1 ${isActive('/') ? 'text-pink-500' : 'text-gray-400'}`}>
+      <Link to="/" className={`flex flex-col items-center gap-1 ${getIconColor('/')}`}>
         <MessageCircle size={24} />
         <span className="text-[10px] font-bold">Chat</span>
       </Link>
-      <Link to="/groups" className={`flex flex-col items-center gap-1 ${isActive('/groups') ? 'text-pink-500' : 'text-gray-400'}`}>
+      <Link to="/groups" className={`flex flex-col items-center gap-1 ${getIconColor('/groups')}`}>
         <Users size={24} />
         <span className="text-[10px] font-bold">Nhóm</span>
       </Link>
-      <Link to="/feed" className={`flex flex-col items-center gap-1 ${isActive('/feed') ? 'text-pink-500' : 'text-gray-400'}`}>
+      <Link to="/feed" className={`flex flex-col items-center gap-1 ${getIconColor('/feed')}`}>
         <LayoutGrid size={24} />
         <span className="text-[10px] font-bold">Feed</span>
       </Link>
-      <Link to="/wallet" className={`flex flex-col items-center gap-1 ${isActive('/wallet') ? 'text-pink-500' : 'text-gray-400'}`}>
+      <Link to="/wallet" className={`flex flex-col items-center gap-1 ${getIconColor('/wallet')}`}>
         <Wallet size={24} />
         <span className="text-[10px] font-bold">Ví</span>
       </Link>
-      <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive('/profile') ? 'text-pink-500' : 'text-gray-400'}`}>
+      <Link to="/profile" className={`flex flex-col items-center gap-1 ${getIconColor('/profile')}`}>
         <User size={24} />
         <span className="text-[10px] font-bold">Tôi</span>
       </Link>
