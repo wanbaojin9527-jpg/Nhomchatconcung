@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { MessageCircle, Users, LayoutGrid, Wallet, User } from 'lucide-react';
+import { MessageCircle, Users, LayoutGrid, Wallet, User, ShieldAlert } from 'lucide-react';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -27,7 +27,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleLogin = (userData: any) => {
-    const isAdmin = userData.phone === '0000000000';
+    // Đảm bảo role được set chính xác khi login
+    const isAdmin = userData.phone === '0000000000' || userData.role === 'admin';
     const finalUser = { ...userData, role: isAdmin ? 'admin' : 'user' };
     localStorage.setItem('concung_session', JSON.stringify(finalUser));
     setUser(finalUser);
@@ -54,7 +55,13 @@ const App: React.FC = () => {
             <Route path="/login" element={!user ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
             <Route path="/register" element={!user ? <RegisterPage onRegister={handleLogin} /> : <Navigate to="/" />} />
             
-            <Route path="/" element={user ? <ChatListPage /> : <Navigate to="/login" />} />
+            {/* TRANG CHỦ THÔNG MINH: Admin thấy trang Quản trị, User thấy trang Tin nhắn */}
+            <Route path="/" element={
+              user ? (
+                user.role === 'admin' ? <AdminDashboardPage /> : <ChatListPage />
+              ) : <Navigate to="/login" />
+            } />
+
             <Route path="/chat/:id" element={user ? <ChatDetailPage /> : <Navigate to="/login" />} />
             <Route path="/groups" element={user ? <GroupListPage /> : <Navigate to="/login" />} />
             <Route path="/feed" element={user ? <FeedPage user={user} /> : <Navigate to="/login" />} />
@@ -64,27 +71,29 @@ const App: React.FC = () => {
           </Routes>
         </main>
 
-        {user && <BottomNav />}
+        {user && <BottomNav role={user.role} />}
       </div>
     </HashRouter>
   );
 };
 
-const BottomNav: React.FC = () => {
+const BottomNav: React.FC<{ role: string }> = ({ role }) => {
   const location = useLocation();
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || (path === '/' && location.pathname === '');
   const getIconColor = (path: string) => isActive(path) ? 'text-pink-500 scale-110' : 'text-gray-400';
 
-  // Admin and users see the same navigation to hide the admin portal
-  const mainTabs = ['/', '/groups', '/feed', '/wallet', '/profile'];
-  if (!mainTabs.includes(location.pathname)) return null;
+  // Không hiện thanh điều hướng ở trang chat chi tiết hoặc khi chưa đăng nhập
+  const hideNavPaths = ['/chat'];
+  if (hideNavPaths.some(p => location.pathname.startsWith(p))) return null;
 
   return (
     <nav className="fixed bottom-0 max-w-md w-full bg-white border-t border-pink-50 px-6 py-3 flex justify-between items-center shadow-[0_-8px_20px_rgba(255,182,193,0.15)] rounded-t-[32px] z-50 transition-all">
       <Link to="/" className={`flex flex-col items-center gap-1 transition-all ${getIconColor('/')}`}>
-        <MessageCircle size={24} strokeWidth={isActive('/') ? 2.5 : 2} />
-        <span className="text-[10px] font-bold">Tin nhắn</span>
+        {role === 'admin' ? <ShieldAlert size={24} /> : <MessageCircle size={24} />}
+        <span className="text-[10px] font-bold">{role === 'admin' ? 'Quản trị' : 'Tin nhắn'}</span>
       </Link>
+      
+      {/* Các tab khác chỉ dành cho User, Admin chỉ nên tập trung quản trị ở trang chủ hoặc chuyển qua khám phá */}
       <Link to="/groups" className={`flex flex-col items-center gap-1 transition-all ${getIconColor('/groups')}`}>
         <Users size={24} strokeWidth={isActive('/groups') ? 2.5 : 2} />
         <span className="text-[10px] font-bold">Nhóm</span>

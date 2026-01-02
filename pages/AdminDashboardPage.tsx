@@ -3,323 +3,257 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, 
-  CheckCircle2, 
-  XCircle, 
   X,
-  Wallet,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Trash2,
   Users,
-  MessageSquare,
-  AlertCircle,
-  Database,
-  TrendingUp,
   Search,
-  PlusCircle,
-  MousePointer2
+  Edit3,
+  Trash2,
+  Database,
+  Wallet,
+  CheckCircle2,
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 
-interface Transaction {
+interface UserProfile {
   id: string;
-  type: 'withdraw' | 'transfer' | 'admin_adj';
-  amount: number;
-  desc: string;
-  time: string;
-  status: 'pending' | 'success' | 'rejected';
-  rejectReason?: string;
-}
-
-interface Post {
-  id: number;
-  user: string;
-  content: string;
-  time: string;
-  image?: string;
+  phone: string;
+  full_name: string;
+  avatar_url: string;
+  role: 'user' | 'admin';
+  balance: number;
 }
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [balance, setBalance] = useState(0);
-  const [activeTab, setActiveTab] = useState<'wallet' | 'posts' | 'users'>('wallet');
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'users' | 'wallet' | 'posts'>('users');
   
-  // Modals
-  const [showAdjModal, setShowAdjModal] = useState(false);
-  const [adjAmount, setAdjAmount] = useState('');
-  const [adjType, setAdjType] = useState<'add' | 'sub'>('add');
+  // Modal states
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    loadAllData();
+    loadUsers();
   }, []);
 
-  const loadAllData = () => {
-    const savedTxs = localStorage.getItem('concung_transactions');
-    const savedBalance = localStorage.getItem('concung_balance');
-    const savedPosts = localStorage.getItem('concung_posts');
-    
-    if (savedTxs) setTransactions(JSON.parse(savedTxs));
-    if (savedBalance) setBalance(parseInt(savedBalance));
-    if (savedPosts) setPosts(JSON.parse(savedPosts));
-  };
-
-  const saveData = (newTxs: Transaction[], newBalance: number) => {
-    setTransactions(newTxs);
-    setBalance(newBalance);
-    localStorage.setItem('concung_transactions', JSON.stringify(newTxs));
-    localStorage.setItem('concung_balance', newBalance.toString());
-  };
-
-  const handleApprove = (id: string) => {
-    const newTxs = transactions.map(tx => tx.id === id ? { ...tx, status: 'success' as const } : tx);
-    saveData(newTxs, balance);
-    alert("✅ ĐÃ DUYỆT THÀNH CÔNG! Tiền đã được trừ khỏi hệ thống.");
-  };
-
-  const handleReject = (id: string) => {
-    const reason = prompt("Lý do từ chối (Lời nhắn cho mẹ):", "Thông tin ngân hàng không chính xác");
-    if (reason === null) return;
-
-    const tx = transactions.find(t => t.id === id);
-    if (!tx) return;
-
-    const newTxs = transactions.map(t => 
-      t.id === id ? { ...t, status: 'rejected' as const, rejectReason: reason } : t
-    );
-    // Hoàn trả lại tiền vào ví người dùng khi bị từ chối
-    saveData(newTxs, balance + tx.amount);
-    alert("❌ ĐÃ TỪ CHỐI! Tiền đã được hoàn lại vào ví của mẹ.");
-  };
-
-  const handleManualAdjust = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseInt(adjAmount);
-    if (isNaN(val) || val <= 0) return;
-
-    const finalVal = adjType === 'add' ? val : -val;
-    const newBalance = balance + finalVal;
-    
-    const newTx: Transaction = {
-      id: `adj-${Date.now()}`,
-      type: 'admin_adj',
-      amount: val,
-      desc: `ADMIN: ${adjType === 'add' ? 'CỘNG' : 'TRỪ'} TIỀN HỆ THỐNG`,
-      time: new Date().toLocaleString(),
-      status: 'success'
-    };
-
-    saveData([newTx, ...transactions], newBalance);
-    setShowAdjModal(false);
-    setAdjAmount('');
-  };
-
-  // Helper để test nhanh tính năng phê duyệt
-  const createSampleRequest = () => {
-    const amount = 50000;
-    if (balance < amount) {
-      alert("Số dư hệ thống không đủ để tạo yêu cầu mẫu (Cần ít nhất 50k)");
-      return;
+  const loadUsers = () => {
+    const savedUsers = localStorage.getItem('concung_all_users');
+    if (savedUsers) {
+      setAllUsers(JSON.parse(savedUsers));
+    } else {
+      // Seed data if empty for demo
+      const initialUsers: UserProfile[] = [
+        { id: 'admin-master', phone: '0000000000', full_name: 'QUẢN TRỊ VIÊN', avatar_url: 'https://img.icons8.com/fluency/96/shield.png', role: 'admin', balance: 999999999 },
+        { id: 'user-1', phone: '0901234567', full_name: 'Mẹ Bé Gấu', avatar_url: 'https://picsum.photos/seed/1/200', role: 'user', balance: 500000 },
+        { id: 'user-2', phone: '0988777666', full_name: 'Mẹ Bỉm Sữa HN', avatar_url: 'https://picsum.photos/seed/2/200', role: 'user', balance: 250000 }
+      ];
+      localStorage.setItem('concung_all_users', JSON.stringify(initialUsers));
+      setAllUsers(initialUsers);
     }
-    const newTx: Transaction = {
-      id: `sample-${Date.now()}`,
-      type: 'withdraw',
-      amount: amount,
-      desc: "Yêu cầu mẫu (Test Admin)",
-      time: new Date().toLocaleString(),
-      status: 'pending'
-    };
-    saveData([newTx, ...transactions], balance - amount);
-    alert("Đã tạo 1 yêu cầu rút tiền mẫu bên dưới để bạn TEST PHÊ DUYỆT!");
   };
 
-  const pendingTxs = transactions.filter(t => t.status === 'pending');
+  const handleUpdateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const updatedUsers = allUsers.map(u => u.id === editingUser.id ? editingUser : u);
+    setAllUsers(updatedUsers);
+    localStorage.setItem('concung_all_users', JSON.stringify(updatedUsers));
+    
+    // Update current session if the edited user is the logged in user
+    const session = localStorage.getItem('concung_session');
+    if (session) {
+      const sessionUser = JSON.parse(session);
+      if (sessionUser.id === editingUser.id) {
+        localStorage.setItem('concung_session', JSON.stringify(editingUser));
+      }
+    }
+
+    setEditingUser(null);
+    alert("CẬP NHẬT THÔNG TIN VÀ SỐ DƯ THÀNH CÔNG! ✅");
+  };
+
+  const deleteUser = (id: string) => {
+    if (id === 'admin-master') return alert("Không thể xóa Admin!");
+    if (window.confirm("Xóa vĩnh viễn người dùng này?")) {
+      const updated = allUsers.filter(u => u.id !== id);
+      setAllUsers(updated);
+      localStorage.setItem('concung_all_users', JSON.stringify(updated));
+    }
+  };
+
+  const filteredUsers = allUsers.filter(u => 
+    u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    u.phone.includes(searchTerm)
+  );
 
   return (
-    <div className="flex flex-col h-full bg-[#f0f2f5] font-sans">
-      {/* HEADER QUYỀN NĂNG */}
-      <div className="bg-gradient-to-b from-slate-900 to-slate-800 pt-16 pb-10 px-6 text-white rounded-b-[50px] shadow-2xl relative overflow-hidden">
-        <div className="absolute top-[-20px] right-[-20px] w-40 h-40 bg-pink-500/20 rounded-full blur-[80px]"></div>
+    <div className="flex flex-col h-full bg-[#f0f4f8] font-sans">
+      {/* HEADER DARK THEME - CỰC KỲ QUYỀN LỰC */}
+      <div className="bg-slate-900 pt-16 pb-10 px-6 text-white rounded-b-[40px] shadow-2xl relative overflow-hidden">
+        <div className="absolute top-[-30px] right-[-30px] w-64 h-64 bg-pink-500/10 rounded-full blur-3xl"></div>
         
-        <div className="flex justify-between items-center mb-8 relative z-10">
+        <div className="flex justify-between items-center mb-6 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-pink-500 rounded-3xl flex items-center justify-center shadow-xl shadow-pink-500/30 border-2 border-white/20 animate-pulse">
+            <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-pink-500/40">
               <ShieldCheck size={36} />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight">ADMIN CONTROL</h1>
-              <p className="text-[10px] font-bold text-green-400 uppercase tracking-widest">Master Access Granted</p>
+              <h1 className="text-2xl font-black tracking-tight uppercase">Control Panel</h1>
+              <p className="text-[10px] font-bold text-pink-400 tracking-[3px] uppercase">Quản lý toàn hệ thống</p>
             </div>
           </div>
-          <button onClick={() => navigate('/profile')} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all border border-white/10">
+          <button onClick={() => navigate('/profile')} className="p-3 bg-white/10 rounded-2xl hover:bg-white/20 transition-all">
             <X size={24} />
           </button>
         </div>
 
-        {/* CHỨC NĂNG THAY ĐỔI SỐ DƯ (CARD CHÍNH) */}
-        <div className="bg-white/10 backdrop-blur-xl rounded-[32px] p-6 border border-white/10 shadow-inner relative z-10">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tổng quỹ hệ thống</p>
-              <h2 className="text-3xl font-black text-pink-400">{balance.toLocaleString()} đ</h2>
-            </div>
-            <div className="flex gap-2">
-               <button 
-                onClick={createSampleRequest}
-                className="bg-blue-500/20 text-blue-300 p-3 rounded-2xl border border-blue-500/30 hover:bg-blue-500/40 transition-all"
-                title="Tạo yêu cầu mẫu để TEST"
-              >
-                <PlusCircle size={20} />
-              </button>
-              <button 
-                onClick={() => setShowAdjModal(true)} 
-                className="bg-pink-500 hover:bg-pink-600 px-6 py-4 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-pink-500/40 active:scale-95 transition-all uppercase"
-              >
-                <TrendingUp size={20} /> THAY ĐỔI SỐ DƯ
-              </button>
-            </div>
-          </div>
+        {/* SEARCH BAR TRONG HEADER */}
+        <div className="relative z-10">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+          <input 
+            type="text" 
+            placeholder="Tìm tên hoặc SĐT người dùng..." 
+            className="w-full bg-white/10 border border-white/10 py-5 pl-14 pr-6 rounded-[24px] text-white placeholder-slate-500 focus:bg-white/20 focus:outline-none transition-all font-bold" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* TABS ĐIỀU HƯỚNG */}
-      <div className="flex px-6 gap-2 mt-6">
-        <button onClick={() => setActiveTab('wallet')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 ${activeTab === 'wallet' ? 'bg-slate-900 text-white shadow-xl translate-y-[-2px]' : 'bg-white text-slate-400 border border-slate-200'}`}>
-          <Wallet size={16} /> PHÊ DUYỆT VÍ ({pendingTxs.length})
+      {/* DANH SÁCH NGƯỜI DÙNG - HIỂN THỊ NGAY LẬP TỨC */}
+      <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar pb-32">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-[2px] flex items-center gap-2">
+            <Users size={16} /> Danh sách hội viên ({filteredUsers.length})
+          </h2>
+          <div className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-[10px] font-black uppercase">
+            Online System
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {filteredUsers.length === 0 ? (
+            <div className="bg-white rounded-[32px] p-12 text-center border-2 border-dashed border-slate-200">
+              <AlertCircle size={48} className="text-slate-200 mx-auto mb-4" />
+              <p className="text-sm font-bold text-slate-400">Không tìm thấy người dùng nào!</p>
+            </div>
+          ) : (
+            filteredUsers.map(user => (
+              <div key={user.id} className="bg-white rounded-[32px] p-5 shadow-sm border border-slate-100 flex items-center justify-between animate-slide-up hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img src={user.avatar_url} className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-50 shadow-sm" alt="Avt" />
+                    {user.role === 'admin' && (
+                      <div className="absolute -top-2 -right-2 bg-pink-500 text-white p-1 rounded-lg border-2 border-white">
+                        <ShieldCheck size={12} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-base leading-tight">{user.full_name}</h3>
+                    <p className="text-[11px] text-slate-400 font-bold">{user.phone}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Wallet size={10} className="text-green-500" />
+                      <p className="text-xs font-black text-green-600">{(user.balance || 0).toLocaleString()} đ</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setEditingUser(user)}
+                    className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-90"
+                    title="Chỉnh sửa thông tin & Số dư"
+                  >
+                    <Edit3 size={20} />
+                  </button>
+                  <button 
+                    onClick={() => deleteUser(user.id)}
+                    className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90"
+                    title="Xóa người dùng"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* FOOTER ĐIỀU HƯỚNG NHANH CHO ADMIN */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 p-4 flex justify-around items-center rounded-t-[40px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-40">
+        <button onClick={() => setActiveTab('users')} className={`flex flex-col items-center gap-1 ${activeTab === 'users' ? 'text-pink-500' : 'text-slate-400'}`}>
+          <Users size={24} />
+          <span className="text-[10px] font-black uppercase">Hội viên</span>
         </button>
-        <button onClick={() => setActiveTab('posts')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 ${activeTab === 'posts' ? 'bg-slate-900 text-white shadow-xl translate-y-[-2px]' : 'bg-white text-slate-400 border border-slate-200'}`}>
-          <MessageSquare size={16} /> BÀI VIẾT ({posts.length})
+        <button onClick={() => { setActiveTab('wallet'); alert("Tính năng duyệt rút tiền ở tab này!"); }} className="flex flex-col items-center gap-1 text-slate-400">
+          <Wallet size={24} />
+          <span className="text-[10px] font-black uppercase">Duyệt Ví</span>
         </button>
-        <button onClick={() => setActiveTab('users')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase transition-all flex items-center justify-center gap-2 ${activeTab === 'users' ? 'bg-slate-900 text-white shadow-xl translate-y-[-2px]' : 'bg-white text-slate-400 border border-slate-200'}`}>
-          <Users size={16} /> NGƯỜI DÙNG
+        <button onClick={() => { setActiveTab('posts'); alert("Quản lý bài đăng ở tab này!"); }} className="flex flex-col items-center gap-1 text-slate-400">
+          <MessageSquare size={24} />
+          <span className="text-[10px] font-black uppercase">Bài viết</span>
         </button>
       </div>
 
-      {/* NỘI DUNG CHÍNH */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar pb-32">
-        
-        {/* TAB PHÊ DUYỆT VÍ */}
-        {activeTab === 'wallet' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Danh sách chờ duyệt</h3>
-              {pendingTxs.length > 0 && (
-                <div className="flex items-center gap-1 text-[10px] font-black text-orange-500 animate-pulse">
-                  <AlertCircle size={12} /> CÓ {pendingTxs.length} YÊU CẦU MỚI
-                </div>
-              )}
-            </div>
-            
-            {pendingTxs.length === 0 ? (
-              <div className="bg-white rounded-[40px] p-12 text-center border-2 border-dashed border-slate-200 flex flex-col items-center">
-                <CheckCircle2 size={48} className="text-slate-200 mb-4" />
-                <p className="text-sm font-bold text-slate-400">Tất cả yêu cầu đã được xử lý!</p>
-                <button onClick={createSampleRequest} className="mt-4 text-[10px] font-black text-pink-500 underline uppercase tracking-widest">Bấm vào đây để tạo yêu cầu mẫu để test</button>
+      {/* MODAL CHỈNH SỬA CHI TIẾT (BAO GỒM SỐ DƯ) */}
+      {editingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in">
+          <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md" onClick={() => setEditingUser(null)}></div>
+          <div className="bg-white w-full max-w-sm rounded-[45px] p-8 relative z-10 shadow-2xl scale-in border-4 border-slate-900">
+            <div className="flex flex-col items-center mb-8">
+              <div className="w-24 h-24 bg-slate-100 rounded-[35px] flex items-center justify-center mb-4 overflow-hidden border-4 border-pink-100 shadow-inner">
+                <img src={editingUser.avatar_url} className="w-full h-full object-cover" alt="Avt" />
               </div>
-            ) : (
-              pendingTxs.map(tx => (
-                <div key={tx.id} className="bg-white rounded-[35px] p-6 shadow-xl shadow-slate-200/50 border border-white animate-slide-up relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-2 h-full bg-orange-500"></div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h4 className="font-black text-slate-800 text-lg leading-tight">{tx.desc}</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 flex items-center gap-1">
-                        <Database size={10} /> ID: {tx.id} • {tx.time}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-2xl font-black text-orange-600">-{tx.amount.toLocaleString()} đ</span>
-                    </div>
-                  </div>
-                  
-                  {/* CÁC NÚT PHÊ DUYỆT CỰC KỲ RÕ RÀNG */}
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => handleApprove(tx.id)} 
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-white py-5 rounded-[22px] font-black text-xs shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 size={18} /> DUYỆT NGAY
-                    </button>
-                    <button 
-                      onClick={() => handleReject(tx.id)} 
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-500 py-5 rounded-[22px] font-black text-xs active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <XCircle size={18} /> TỪ CHỐI
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Cấu hình Hội viên</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {editingUser.id}</p>
+            </div>
 
-        {/* CÁC TAB KHÁC (GIỮ NGUYÊN HOẶC TINH CHỈNH NHẸ) */}
-        {activeTab === 'posts' && (
-          <div className="space-y-4">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">Quản lý nội dung</h3>
-            {posts.map(post => (
-              <div key={post.id} className="bg-white rounded-3xl p-5 border border-slate-100 flex items-start justify-between shadow-sm">
-                <div className="flex-1 pr-4">
-                  <p className="font-black text-slate-800 text-sm">{post.user}</p>
-                  <p className="text-xs text-slate-500 mt-1">{post.content}</p>
-                </div>
-                <button onClick={() => {
-                  if(window.confirm("Xóa bài này?")) {
-                    const newPosts = posts.filter(p => p.id !== post.id);
-                    setPosts(newPosts);
-                    localStorage.setItem('concung_posts', JSON.stringify(newPosts));
-                  }
-                }} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
-                  <Trash2 size={18} />
+            <form onSubmit={handleUpdateUser} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-3">Tên hiển thị</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border-2 border-slate-100 py-4 px-6 rounded-2xl text-sm font-bold text-slate-800 focus:border-slate-900 outline-none transition-all" 
+                  value={editingUser.full_name} 
+                  onChange={e => setEditingUser({...editingUser, full_name: e.target.value})} 
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase ml-3">Số điện thoại</label>
+                <input 
+                  type="tel" 
+                  className="w-full bg-slate-50 border-2 border-slate-100 py-4 px-6 rounded-2xl text-sm font-bold text-slate-800 focus:border-slate-900 outline-none transition-all" 
+                  value={editingUser.phone} 
+                  onChange={e => setEditingUser({...editingUser, phone: e.target.value})} 
+                />
+              </div>
+
+              <div className="space-y-1.5 bg-pink-50/50 p-4 rounded-3xl border-2 border-pink-100">
+                <label className="text-[10px] font-black text-pink-500 uppercase ml-1 flex items-center gap-2">
+                  <Database size={12} /> Số dư ví cá nhân (đ)
+                </label>
+                <input 
+                  type="number" 
+                  className="w-full bg-white border-2 border-pink-200 py-5 px-6 rounded-2xl text-2xl font-black text-pink-600 focus:border-pink-500 outline-none transition-all shadow-inner" 
+                  value={editingUser.balance} 
+                  onChange={e => setEditingUser({...editingUser, balance: parseInt(e.target.value) || 0})} 
+                  autoFocus
+                />
+                <p className="text-[9px] text-pink-400 font-bold mt-2 text-center uppercase">Nhập số tiền mẹ muốn thay đổi cho user này</p>
+              </div>
+              
+              <div className="pt-4 flex gap-3">
+                <button type="submit" className="flex-1 bg-slate-900 text-white py-5 rounded-[24px] font-black text-sm flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all">
+                  CẬP NHẬT <CheckCircle2 size={20} />
                 </button>
+                <button type="button" onClick={() => setEditingUser(null)} className="px-6 bg-slate-100 text-slate-400 rounded-[24px] font-black text-xs active:scale-95 uppercase">Hủy</button>
               </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-[40px] p-12 text-center border-2 border-slate-100">
-            <Users size={48} className="text-slate-200 mx-auto mb-4" />
-            <h3 className="font-black text-slate-800 text-sm mb-2">Hội Viên ConCung</h3>
-            <p className="text-xs text-slate-400">Danh sách người dùng đang được tải...</p>
-          </div>
-        )}
-      </div>
-
-      {/* MODAL THAY ĐỔI SỐ DƯ (GHI ĐÈ HỆ THỐNG) */}
-      {showAdjModal && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 animate-fade-in">
-          <div className="absolute inset-0 bg-slate-900/95 backdrop-blur-xl" onClick={() => setShowAdjModal(false)}></div>
-          <div className="bg-white w-full max-w-sm rounded-[50px] p-10 relative z-10 shadow-2xl scale-in border-4 border-slate-900">
-            <div className="w-20 h-20 bg-slate-900 text-pink-500 rounded-[28px] flex items-center justify-center mx-auto mb-6 shadow-2xl">
-              <Database size={40} />
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 mb-2 text-center tracking-tighter uppercase">Can thiệp Database</h2>
-            <p className="text-[10px] text-slate-400 text-center mb-8 font-black uppercase tracking-widest">Bơm hoặc thu hồi tiền từ quỹ tổng</p>
-            
-            <div className="flex gap-2 mb-8">
-              <button onClick={() => setAdjType('add')} className={`flex-1 py-5 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all ${adjType === 'add' ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>
-                <ArrowUpCircle size={20}/> CỘNG TIỀN
-              </button>
-              <button onClick={() => setAdjType('sub')} className={`flex-1 py-5 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all ${adjType === 'sub' ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>
-                <ArrowDownCircle size={20}/> TRỪ TIỀN
-              </button>
-            </div>
-
-            <div className="relative mb-8">
-              <input 
-                type="number" 
-                placeholder="NHẬP SỐ TIỀN..." 
-                className="w-full bg-slate-50 border-4 border-slate-100 py-6 px-6 rounded-3xl font-black text-3xl text-center outline-none focus:border-slate-900 transition-all text-slate-900" 
-                value={adjAmount} 
-                onChange={e => setAdjAmount(e.target.value)} 
-                autoFocus
-              />
-            </div>
-            
-            <button onClick={handleManualAdjust} className="w-full bg-slate-900 text-white py-5 rounded-[24px] font-black shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 text-sm">
-              LƯU THAY ĐỔI HỆ THỐNG <ShieldCheck size={20} />
-            </button>
+            </form>
           </div>
         </div>
       )}
@@ -327,7 +261,7 @@ const AdminDashboardPage: React.FC = () => {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes scale-in { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-slide-up { animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .scale-in { animation: scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
         @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
