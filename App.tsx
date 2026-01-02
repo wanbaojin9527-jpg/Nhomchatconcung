@@ -1,100 +1,94 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import SplashScreen from './pages/SplashScreen';
-import LoginScreen from './pages/LoginScreen';
-import RegisterScreen from './pages/RegisterScreen';
-import HomeScreen from './pages/HomeScreen';
-import ChatDetailScreen from './pages/ChatDetailScreen';
-import ContactsScreen from './pages/ContactsScreen';
-import DiscoverScreen from './pages/DiscoverScreen';
-import ProfileScreen from './pages/ProfileScreen';
-import NotificationsScreen from './pages/NotificationsScreen';
-import SettingsScreen from './pages/SettingsScreen';
-import ImageViewerScreen from './pages/ImageViewerScreen';
-import { User } from './types';
+import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { MessageCircle, Users, LayoutGrid, Wallet, User, PlusCircle, LogOut } from 'lucide-react';
 
-export const broadcastDataUpdate = () => {
-  window.dispatchEvent(new CustomEvent('cp-data-update'));
-};
+// Pages (defined in same file for simplicity as per instructions, but logic-wise separate)
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ChatListPage from './pages/ChatListPage';
+import ChatDetailPage from './pages/ChatDetailPage';
+import GroupListPage from './pages/GroupListPage';
+import FeedPage from './pages/FeedPage';
+import WalletPage from './pages/WalletPage';
+import ProfilePage from './pages/ProfilePage';
 
+// Mock Auth Context (In a real app, use Supabase Auth)
 const App: React.FC = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedDark = localStorage.getItem('cp_dark_mode') === 'true';
-    setIsDarkMode(savedDark);
-    
-    const session = localStorage.getItem('cp_session');
+    // Check local storage for session (Mocking Supabase session)
+    const session = localStorage.getItem('concung_session');
     if (session) {
-      setCurrentUser(JSON.parse(session));
+      setUser(JSON.parse(session));
     }
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'cp_session' && !e.newValue) {
-        setCurrentUser(null);
-      }
-      if (['cp_chats', 'cp_friend_requests', 'cp_posts', 'cp_users', 'cp_notifications'].includes(e.key || '')) {
-        broadcastDataUpdate();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('cp_dark_mode', isDarkMode.toString());
-  }, [isDarkMode]);
-
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('cp_session', JSON.stringify(user));
-    broadcastDataUpdate();
+  const handleLogin = (userData: any) => {
+    localStorage.setItem('concung_session', JSON.stringify(userData));
+    setUser(userData);
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('cp_session');
-    broadcastDataUpdate();
+    localStorage.removeItem('concung_session');
+    setUser(null);
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    setCurrentUser(updatedUser);
-    localStorage.setItem('cp_session', JSON.stringify(updatedUser));
-    
-    const users: User[] = JSON.parse(localStorage.getItem('cp_users') || '[]');
-    const index = users.findIndex(u => u.id === updatedUser.id);
-    if (index !== -1) {
-      users[index] = updatedUser;
-      localStorage.setItem('cp_users', JSON.stringify(users));
-    }
-    broadcastDataUpdate();
-  };
+  if (loading) return <div className="h-screen flex items-center justify-center text-pink-400">Đang tải...</div>;
 
   return (
-    <Router>
-      <div className="app-container border-x border-slate-100 dark:border-slate-800 transition-colors duration-500 overflow-x-hidden relative">
-        <Routes>
-          <Route path="/" element={<SplashScreen />} />
-          <Route path="/login" element={<LoginScreen onLogin={handleLogin} />} />
-          <Route path="/register" element={<RegisterScreen onRegister={handleLogin} />} />
-          
-          <Route path="/home" element={currentUser ? <HomeScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/chat/:chatId" element={currentUser ? <ChatDetailScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/contacts" element={currentUser ? <ContactsScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/discover" element={currentUser ? <DiscoverScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/notifications" element={currentUser ? <NotificationsScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/profile" element={currentUser ? <ProfileScreen user={currentUser} onLogout={handleLogout} onUpdateUser={handleUpdateUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} /> : <Navigate to="/login" />} />
-          <Route path="/settings" element={currentUser ? <SettingsScreen user={currentUser} /> : <Navigate to="/login" />} />
-          <Route path="/image-viewer" element={<ImageViewerScreen />} />
-          
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+    <HashRouter>
+      <div className="max-w-md mx-auto min-h-screen bg-white shadow-xl relative overflow-hidden flex flex-col">
+        <main className="flex-1 overflow-y-auto custom-scrollbar pb-20">
+          <Routes>
+            <Route path="/login" element={!user ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
+            <Route path="/register" element={!user ? <RegisterPage onRegister={handleLogin} /> : <Navigate to="/" />} />
+            
+            <Route path="/" element={user ? <ChatListPage /> : <Navigate to="/login" />} />
+            <Route path="/chat/:id" element={user ? <ChatDetailPage /> : <Navigate to="/login" />} />
+            <Route path="/groups" element={user ? <GroupListPage /> : <Navigate to="/login" />} />
+            <Route path="/feed" element={user ? <FeedPage /> : <Navigate to="/login" />} />
+            <Route path="/wallet" element={user ? <WalletPage /> : <Navigate to="/login" />} />
+            <Route path="/profile" element={user ? <ProfilePage user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} />
+          </Routes>
+        </main>
+
+        {user && <BottomNav />}
       </div>
-    </Router>
+    </HashRouter>
+  );
+};
+
+const BottomNav: React.FC = () => {
+  const location = useLocation();
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <nav className="fixed bottom-0 max-w-md w-full bg-white border-t border-pink-100 px-6 py-3 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] rounded-t-3xl z-50">
+      <Link to="/" className={`flex flex-col items-center gap-1 ${isActive('/') ? 'text-pink-500' : 'text-gray-400'}`}>
+        <MessageCircle size={24} />
+        <span className="text-[10px] font-bold">Chat</span>
+      </Link>
+      <Link to="/groups" className={`flex flex-col items-center gap-1 ${isActive('/groups') ? 'text-pink-500' : 'text-gray-400'}`}>
+        <Users size={24} />
+        <span className="text-[10px] font-bold">Nhóm</span>
+      </Link>
+      <Link to="/feed" className={`flex flex-col items-center gap-1 ${isActive('/feed') ? 'text-pink-500' : 'text-gray-400'}`}>
+        <LayoutGrid size={24} />
+        <span className="text-[10px] font-bold">Feed</span>
+      </Link>
+      <Link to="/wallet" className={`flex flex-col items-center gap-1 ${isActive('/wallet') ? 'text-pink-500' : 'text-gray-400'}`}>
+        <Wallet size={24} />
+        <span className="text-[10px] font-bold">Ví</span>
+      </Link>
+      <Link to="/profile" className={`flex flex-col items-center gap-1 ${isActive('/profile') ? 'text-pink-500' : 'text-gray-400'}`}>
+        <User size={24} />
+        <span className="text-[10px] font-bold">Tôi</span>
+      </Link>
+    </nav>
   );
 };
 

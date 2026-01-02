@@ -1,100 +1,55 @@
 
-export interface User {
+export interface Profile {
   id: string;
-  name: string;
-  avatar: string;
-  status: 'online' | 'offline' | 'busy';
-  phoneNumber: string;
-  password?: string;
+  full_name: string;
+  avatar_url: string;
   bio?: string;
 }
 
-export interface Reaction {
-  emoji: string;
-  userId: string;
-}
-
-export interface LocationData {
-  lat: number;
-  lng: number;
-  address?: string;
-}
-
 export interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  text?: string;
-  imageUrl?: string;
-  audioUrl?: string;
-  location?: LocationData;
-  stickerUrl?: string;
-  fileUrl?: string; 
-  fileName?: string;
-  timestamp: string;
-  status: 'sent' | 'delivered' | 'read';
-  replyToId?: string;
-  replyToText?: string;
-  replyToSenderName?: string;
-  reactions?: Reaction[];
-  isPinned?: boolean;
-  isRecalled?: boolean; 
-  isEdited?: boolean; 
+  id: number;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+  profiles?: Profile; // Joined data
 }
 
-export interface Chat {
+export interface Group {
   id: string;
-  type: 'individual' | 'group' | 'cloud';
-  participants: string[];
-  ownerId?: string;
-  name?: string;
-  avatar?: string;
-  messages: Message[];
-  lastTimestamp: string;
-  pinnedMessageId?: string;
+  name: string;
+  avatar_url?: string;
+  created_by: string;
+  created_at: string;
 }
 
-export interface Comment {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  text: string;
-  timestamp: string;
-  likes?: number;
-  likedBy?: string[]; // Danh sách ID những người đã thả tim bình luận
+export interface GroupMessage {
+  id: number;
+  group_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  profiles?: Profile;
 }
 
 export interface Post {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
+  id: number;
+  user_id: string;
   content: string;
-  imageUrl?: string;
-  timestamp: string;
-  likes: number;
-  likedBy: string[]; 
-  comments: Comment[];
+  image_url?: string;
+  created_at: string;
+  profiles?: Profile;
 }
 
-export interface AppNotification {
-  id: string;
-  userId: string;
-  type: 'new_post' | 'friend_accepted' | 'like' | 'comment';
-  fromUserId: string;
-  fromUserName: string;
-  fromUserAvatar: string;
-  content: string;
-  timestamp: string;
-  isRead: boolean;
-  relatedId?: string;
+export interface Wallet {
+  user_id: string;
+  balance: number;
 }
 
-export interface FriendRequest {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  timestamp: string;
+export interface Transaction {
+  id: number;
+  amount: number;
+  type: 'topup' | 'withdraw' | 'transfer';
+  description: string;
+  created_at: string;
 }

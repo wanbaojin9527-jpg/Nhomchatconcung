@@ -1,10 +1,9 @@
 
 {
-  "name": "Connect Plus",
-  "description": "A feature-rich social messaging platform with real-time chat, discovery feeds, and AI-powered smart replies.",
+  "name": "ConCung Chat & Wallet",
+  "description": "A mom-and-baby themed social platform featuring real-time chat, group messaging, social feed, and an integrated digital wallet with a soft pastel aesthetic.",
   "requestFramePermissions": [
     "camera",
-    "microphone",
-    "geolocation"
+    "microphone"
   ]
 }
